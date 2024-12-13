@@ -7,7 +7,7 @@ import (
 
 	cnitypes "github.com/containernetworking/cni/pkg/types"
 	cni100 "github.com/containernetworking/cni/pkg/types/100"
-	resourcev1alpha3 "k8s.io/api/resource/v1alpha3"
+	resourcev1beta1 "k8s.io/api/resource/v1beta1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	clientset "k8s.io/client-go/kubernetes"
@@ -17,7 +17,7 @@ type CNIStatusHandler struct {
 	ClientSet clientset.Interface
 }
 
-func (cnish *CNIStatusHandler) UpdateStatus(ctx context.Context, claim *resourcev1alpha3.ResourceClaim, result cnitypes.Result) error {
+func (cnish *CNIStatusHandler) UpdateStatus(ctx context.Context, claim *resourcev1beta1.ResourceClaim, result cnitypes.Result) error {
 	resultBytes, err := json.Marshal(result)
 	if err != nil {
 		return fmt.Errorf("cni.handleClaim: failed to json.Marshal result (%v): %v", result, err)
@@ -28,41 +28,37 @@ func (cnish *CNIStatusHandler) UpdateStatus(ctx context.Context, claim *resource
 		return fmt.Errorf("cni.handleClaim: failed to NewResultFromResult result (%v): %v", result, err)
 	}
 
-	claim.Status.Devices = append(claim.Status.Devices, resourcev1alpha3.AllocatedDeviceStatus{
+	claim.Status.Devices = append(claim.Status.Devices, resourcev1beta1.AllocatedDeviceStatus{
 		Driver: claim.Status.Allocation.Devices.Results[0].Driver,
 		Pool:   claim.Status.Allocation.Devices.Results[0].Pool,
 		Device: claim.Status.Allocation.Devices.Results[0].Device,
-		Data: []runtime.RawExtension{
-			{
-				Raw: resultBytes,
-			},
+		Data: runtime.RawExtension{
+			Raw: resultBytes,
 		},
 		NetworkData: cniResultToNetworkData(cniResult),
 	})
 
-	_, err = cnish.ClientSet.ResourceV1alpha3().ResourceClaims(claim.GetNamespace()).UpdateStatus(ctx, claim, v1.UpdateOptions{})
+	_, err = cnish.ClientSet.ResourceV1beta1().ResourceClaims(claim.GetNamespace()).UpdateStatus(ctx, claim, v1.UpdateOptions{})
 	if err != nil {
 		return fmt.Errorf("cni.handleClaim: failed to update resource claim status (%v): %v", result, err)
 	}
 	return nil
 }
 
-func cniResultToNetworkData(cniResult *cni100.Result) resourcev1alpha3.NetworkDeviceData {
-	networkData := resourcev1alpha3.NetworkDeviceData{}
+func cniResultToNetworkData(cniResult *cni100.Result) *resourcev1beta1.NetworkDeviceData {
+	networkData := resourcev1beta1.NetworkDeviceData{}
 
 	for _, ip := range cniResult.IPs {
-		networkData.Addresses = append(networkData.Addresses, resourcev1alpha3.NetworkAddress{
-			CIDR: ip.Address.String(),
-		})
+		networkData.IPs = append(networkData.IPs, ip.Address.String())
 	}
 
 	for _, ifs := range cniResult.Interfaces {
 		// Only pod interfaces can have sandbox information
 		if ifs.Sandbox != "" {
 			networkData.InterfaceName = ifs.Name
-			networkData.HWAddress = ifs.Mac
+			networkData.HardwareAddress = ifs.Mac
 		}
 	}
 
-	return networkData
+	return &networkData
 }

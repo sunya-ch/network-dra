@@ -25,7 +25,7 @@ spec:
       containers:
       - name: network-nri-plugin
         image: {{ .Values.registry }}/network-nri-plugin:latest
-        imagePullPolicy: Always
+        imagePullPolicy: IfNotPresent
         command:
         - ./network-nri-plugin
         args:

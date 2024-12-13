@@ -13,7 +13,7 @@ help: ## Display this help.
 # Variables
 ############################################################################
 
-IMAGES ?= network-nri-plugin
+IMAGE ?= network-nri-plugin
 VERSION ?= latest
 
 # Contrainer Registry
@@ -31,9 +31,11 @@ BUILD_DIR ?= build
 BUILD_STEPS ?= build tag push
 BUILD_CMD ?= build
 BUILD_ARGS ?= 
-BUILD_REGISTRY ?=
+BUILD_REGISTRY ?= $(REGISTRY)/
 
 OUTPUT_DIR ?= _output
+
+CTR_CMD ?= podman
 
 #############################################################################
 # Container: Build, tag, push
@@ -41,7 +43,7 @@ OUTPUT_DIR ?= _output
 
 .PHONY: build
 build:
-	docker $(BUILD_CMD) \
+	$(CTR_CMD) $(BUILD_CMD) \
 	$(BUILD_ARGS) \
 	-t $(BUILD_REGISTRY)$(IMAGE):$(VERSION) \
 	--build-arg BUILD_VERSION=$(shell git describe --dirty --tags) \
@@ -49,10 +51,13 @@ build:
 	-f ./$(BUILD_DIR)/$(IMAGE)/Dockerfile .
 .PHONY: tag
 tag:
-	docker tag $(BUILD_REGISTRY)$(IMAGE):$(VERSION) $(REGISTRY)/$(IMAGE):$(VERSION)
+	$(CTR_CMD) tag $(BUILD_REGISTRY)$(IMAGE):$(VERSION) $(REGISTRY)/$(IMAGE):$(VERSION)
 .PHONY: push
 push:
-	docker push $(REGISTRY)/$(IMAGE):$(VERSION)
+# $(CTR_CMD) push $(REGISTRY)/$(IMAGE):$(VERSION)
+	$(CTR_CMD) save $(REGISTRY)/$(IMAGE):$(VERSION) -o network-nri-plugin.tar
+	kind load image-archive network-nri-plugin.tar
+	rm network-nri-plugin.tar
 
 #############################################################################
 ##@ Component (Build, tag, push): use VERSION to set the version. Use BUILD_STEPS to set the build steps (build, tag, push)

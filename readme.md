@@ -1,3 +1,5 @@
+> This repository is modified from https://github.com/LionelJouin/network-dra.git on 2024/12/13 when the resource betav1 is not available on multi-network repository. Thus, we need to modify vendor manually.
+
 # Network DRA
 
 Example of a DRA integration with an NRI Plugin for calling CNIs on pod creation.
@@ -26,55 +28,53 @@ Other PoCs:
 
 ## Build
 
-Generate Code (Proto, API, ...)
 ```
-make generate
-```
-
-build/push (default registry: localhost:5000/network-dra)
-```
-make REGISTRY=localhost:5000/network-dra
-```
-
-Clone Kubernetes
-```
-git clone git@github.com:kubernetes/kubernetes.git
-cd kubernetes
-git remote add LionelJouin git@github.com:LionelJouin/kubernetes.git
-git fetch LionelJouin
-git checkout LionelJouin/KEP-4817
-```
-
-Build Kubernetes
-```
-kind build node-image . --image kindest/node:kep-4817
+make network-nri-plugin
 ```
 
 ## Demo
 
-Create Kind Cluster
+### Create Kind Cluster
 ```
 kind create cluster --config examples/kind.yaml
 ```
 
-Load Images in Kind
+### Load Images in Kind
 ```
 kind load docker-image localhost:5000/network-dra/network-nri-plugin:latest
 ```
 
-Install CNI Plugins
+### Install CNI Plugins
+
+For amd64:
 ```
 kubectl apply -f https://raw.githubusercontent.com/k8snetworkplumbingwg/multus-cni/master/e2e/templates/cni-install.yml.j2
 ```
+For arm64:
+```
+kubectl apply -f examples/arm64-cni-installer.yaml
+```
 
-Install DRA Plugin
+### Install DRA Plugin
 ```
 helm install network-dra deployments/network-DRA --set registry=localhost:5000/network-dra
 ```
 
-Demo
+**For some reason, if the resourceslice is missing from helm, please manually deploy**
+```
+kubectl apply -f deployments/network-DRA/templates/resourceslice.yaml
+```
+
+## Demo
 ```
 kubectl apply -f examples/demo-a.yaml
+```
+
+Check pod is running
+```
+> kubectl get po demo-a
+NAME     READY   STATUS    RESTARTS   AGE
+demo-a   1/1     Running   0          12m
 ```
 
 - Demo A
@@ -103,7 +103,7 @@ Object applied: [./examples/demo-a.yaml](examples/demo-a.yaml)
 
 Final ResourceClaim object:
 ```yaml
-apiVersion: resource.k8s.io/v1alpha3
+apiVersion: resource.k8s.io/v1beta1
 kind: ResourceClaim
 metadata:
   name: macvlan-eth0-attachment
@@ -197,7 +197,7 @@ status:
 - MN KEP: https://github.com/kubernetes/enhancements/pull/3700
 - MN Sync: https://docs.google.com/document/d/1pe_0aOsI35BEsQJ-FhFH9Z_pWQcU2uqwAnOx2NIx6OY/edit#heading=h.fo1yo94x96wg
 - DRA KEP: https://github.com/kubernetes/enhancements/blob/master/keps/sig-node/3063-dynamic-resource-allocation/README.md
-- DRA API: https://github.com/kubernetes/kubernetes/blob/v1.30.0/staging/src/k8s.io/kubelet/pkg/apis/dra/v1alpha3/api.proto#L34
+- DRA API: https://github.com/kubernetes/kubernetes/blob/v1.30.0/staging/src/k8s.io/kubelet/pkg/apis/dra/v1beta1/api.proto#L34
 - DRA Controller: https://pkg.go.dev/k8s.io/dynamic-resource-allocation/controller
 - NRI: https://github.com/containerd/nri
 - NRI in Containerd: https://github.com/containerd/containerd/blob/v2.0.0-rc.2/docs/NRI.md

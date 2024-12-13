@@ -9,7 +9,7 @@ featureGates:
   "DRAResourceClaimDeviceStatus": true
 runtimeConfig:
   "networking.k8s.io/v1alpha1": true
-  "resource.k8s.io/v1alpha3": true
+  "resource.k8s.io/v1beta1": true
 containerdConfigPatches:
 - |-
   [plugins."io.containerd.grpc.v1.cri"]
@@ -20,6 +20,6 @@ containerdConfigPatches:
     disable = false
 nodes:
 - role: control-plane
-  image: kindest/node:kep-4817
+  image: kindest/node:v1.32.0
 - role: worker
-  image: kindest/node:kep-4817
+  image: kindest/node:v1.32.0
