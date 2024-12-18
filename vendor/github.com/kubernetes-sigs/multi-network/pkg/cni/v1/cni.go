@@ -14,6 +14,7 @@ import (
 )
 
 type PodResourceStore interface {
+	Add(podUID types.UID, allocation *resourcev1beta1.ResourceClaim)
 	Get(podUID types.UID) []*resourcev1beta1.ResourceClaim
 	Delete(podUID types.UID)
 }
@@ -48,6 +49,15 @@ func New(
 	}
 
 	return cni
+}
+
+func (cni *CNI) AddNewPodResource(podUID types.UID, claim *resourcev1beta1.ResourceClaim) bool {
+	if cni.nonTargetClaim(claim) {
+		// invalid claim
+		return false
+	}
+	cni.podResourceStore.Add(podUID, claim)
+	return true
 }
 
 func (cni *CNI) AttachNetworks(
@@ -89,12 +99,8 @@ func (cni *CNI) handleClaim(
 	podNetworkNamespace string,
 	claim *resourcev1beta1.ResourceClaim,
 ) error {
-	if claim.Status.Allocation == nil ||
-		len(claim.Status.Allocation.Devices.Results) != 1 ||
-		len(claim.Status.Allocation.Devices.Config) != 1 ||
-		claim.Status.Allocation.Devices.Results[0].Driver != cni.driverName ||
-		claim.Status.Allocation.Devices.Config[0].Opaque == nil ||
-		claim.Status.Allocation.Devices.Config[0].Opaque.Driver != cni.driverName {
+
+	if cni.nonTargetClaim(claim) {
 		return nil
 	}
 
@@ -127,6 +133,15 @@ func (cni *CNI) handleClaim(
 	}
 
 	return nil
+}
+
+func (cni *CNI) nonTargetClaim(claim *resourcev1beta1.ResourceClaim) bool {
+	return claim.Status.Allocation == nil ||
+		len(claim.Status.Allocation.Devices.Results) != 1 ||
+		len(claim.Status.Allocation.Devices.Config) != 1 ||
+		claim.Status.Allocation.Devices.Results[0].Driver != cni.driverName ||
+		claim.Status.Allocation.Devices.Config[0].Opaque == nil ||
+		claim.Status.Allocation.Devices.Config[0].Opaque.Driver != cni.driverName
 }
 
 func (cni *CNI) add(

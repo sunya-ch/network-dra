@@ -21,6 +21,14 @@ func NewMemory() *Memory {
 func (m *Memory) Add(podUID types.UID, claim *resourcev1beta1.ResourceClaim) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
+	if claims, found := m.podResources[podUID]; found {
+		for index, c := range claims {
+			if claim.Name == c.Name {
+				m.podResources[podUID][index] = claim
+				return
+			}
+		}
+	}
 	m.podResources[podUID] = append(m.podResources[podUID], claim)
 }
 
